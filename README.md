@@ -40,7 +40,10 @@ poetry shell
 ```
 
 ### Scala Installation
-
+Compile the project with the following command:
+```bash
+sbt compile
+```
 
 docker run --gpus all -it -v $(pwd)/:/workspace --rm nvcr.io/nvidia/tensorrt:23.10-py3 bash
 trtexec --onnx=yolov8n-cls-1.onnx --saveEngine=yolov8n-cls-1.plan --explicitBatch
