@@ -1,0 +1,33 @@
+name: "yolov8_16"
+backend: "tensorrt"
+max_batch_size : 0
+input [
+  {
+    name: "images"
+    data_type: TYPE_FP32
+    dims: [ 16, 3, 224, 224 ]
+  }
+]
+output [
+  {
+    name: "output0"
+    data_type: TYPE_FP32
+    dims: [ 16, 1000 ]
+  }
+]
+
+model_warmup {
+   name: "text_recognition"
+   batch_size: 0
+   inputs: {
+       key: "images"
+       value: {
+           data_type: TYPE_FP32
+           dims: 16
+           dims: 3
+           dims: 224
+           dims: 224
+           zero_data: true
+       }
+   }
+}

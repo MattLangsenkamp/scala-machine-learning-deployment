@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "scalamachinelearningdeployment"
+version = "0.0.1"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13"
+onnxruntime-gpu = "^1.16.0"
+torch = "^2.0.0"
+ultralytics = "^8.0.190"
+onnxruntime = "^1.16.0"
+onnx = "^1.14.1"
+pillow = "^10.1.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
