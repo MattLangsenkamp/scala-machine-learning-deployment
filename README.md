@@ -30,9 +30,6 @@ If something goes wrong and you need to start from scrath follow the instruction
 ### Docker Nvidia
 Finally install Docker-Nvidia using these [instructions](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
 
-For more information on the sbt-dotty plugin, see the
-[scala3-example-project](https://github.com/scala/scala3-example-project/blob/main/README.md).
-
 ### Python Installation
 Installation assumes you have the poetry build tool installed on your system. Poetry is not required to create a python environment, but if you choose not to use it you will have to modify the instructions accordingly. 
 
