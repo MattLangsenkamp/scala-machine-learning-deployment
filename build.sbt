@@ -1,9 +1,11 @@
+// 1 create dependency variables
 val scala3Version = "3.3.1"
 val fs2Version    = "3.9.3"
 val openCVVersion = "1.5.9"
 val circeVersion  = "0.14.6"
 val osLibVersion  = "0.9.2"
 
+// 2 create protobuf module
 lazy val protobuf =
   project
     .in(file("protobuf"))
@@ -11,7 +13,7 @@ lazy val protobuf =
       name         := "protobuf",
       scalaVersion := scala3Version
     )
-    .enablePlugins(Fs2Grpc)
+    .enablePlugins(Fs2Grpc) // explicitly depend on gRPC plugin
 
 lazy val root = project
   .in(file("."))
@@ -19,7 +21,7 @@ lazy val root = project
     name         := "scalamachinelearningdeployment",
     version      := "0.0.1",
     scalaVersion := scala3Version,
-    // add dependencies
+    // 3 add dependencies
     libraryDependencies ++= Seq(
       "io.grpc"        % "grpc-netty-shaded" % scalapb.compiler.Version.grpcJavaVersion,
       "co.fs2"        %% "fs2-core"          % fs2Version,

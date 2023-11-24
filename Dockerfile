@@ -8,5 +8,4 @@ RUN mkdir -p models/yolov8_16/1/
 COPY config_16.pbtxt models/yolov8_16/config.pbtxt
 COPY yolov8n-cls-16.plan models/yolov8_16/1/model.plan
 
-# tritonserver --model-repository=/opt/tritonserver/models
 CMD [ "tritonserver",  "--model-repository=/opt/tritonserver/models" ]

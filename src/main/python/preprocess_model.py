@@ -17,7 +17,9 @@ if __name__ == "__main__":
     # 3 inspect inputs and outputs
     model = load("yolov8n-cls-1.onnx")
 
-    print("\n\n --- inspecting model inputs and outputs --- ")
+    print(
+        "\n\n --- inspecting model inputs and outputs of model with batch size 1 --- "
+    )
     print(" --- inputs ---")
     i = model.graph.input[0]
     print(i)
@@ -26,7 +28,20 @@ if __name__ == "__main__":
     print(o)
     print(" ------------------------------------------- \n\n")
 
-    # 5 save the label lookup table
+    model = load("yolov8n-cls-16.onnx")
+
+    print(
+        "\n\n --- inspecting model inputs and outputs of model with batch size 16 --- "
+    )
+    print(" --- inputs ---")
+    i = model.graph.input[0]
+    print(i)
+    print(" --- outputs ---")
+    o = model.graph.output[0]
+    print(o)
+    print(" ------------------------------------------- \n\n")
+
+    # 4 save the label lookup table
     lookup_dict = eval(model.metadata_props[-1].value)
     with open("labels.json", "w") as outfile:
         json.dump(lookup_dict, outfile)
