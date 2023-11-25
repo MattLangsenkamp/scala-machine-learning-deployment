@@ -25,23 +25,6 @@ import java.nio.ByteOrder
 
 object GrpcClient extends IOApp.Simple:
 
-  val grpcStub: Resource[IO, GRPCInferenceServiceFs2Grpc[IO, Metadata]] =
-    NettyChannelBuilder
-      .forAddress("127.0.0.1", 8001)
-      .usePlaintext()
-      .resource[IO]
-      .flatMap(GRPCInferenceServiceFs2Grpc.stubResource[IO])
-
-  type LabelMap = Map[Int, String]
-
-  val labelMap: LabelMap = io.circe.parser
-    .decode[Map[String, String]](read(pwd / "labels.json"))
-    .getOrElse(
-      // if we dont have labels nothing else matters, better to fail fast
-      throw new Exception("Could not parse label map")
-    )
-    .map((k, v) => (k.toInt, v))
-
   def getImageStream(batchSize: Int) = Files[IO]
     .readAll(Path((pwd / "images.txt").toString))
     .through(text.utf8.decode)
@@ -69,6 +52,13 @@ object GrpcClient extends IOApp.Simple:
     val it = InferInputTensor("images", "FP32", Seq(batchSize, 3, 224, 224), contents = Some(ic))
     ModelInferRequest(s"yolov8_$batchSize", "1", inputs = Seq(it))
 
+  val grpcStub: Resource[IO, GRPCInferenceServiceFs2Grpc[IO, Metadata]] =
+    NettyChannelBuilder
+      .forAddress("127.0.0.1", 8001)
+      .usePlaintext()
+      .resource[IO]
+      .flatMap(GRPCInferenceServiceFs2Grpc.stubResource[IO])
+
   def decodeModelInferResponse(
       response: ModelInferResponse,
       batchSize: Int,
@@ -76,19 +66,22 @@ object GrpcClient extends IOApp.Simple:
       labelMap: LabelMap
   ) =
     IO.blocking {
-      val arr = new Array[Float](batchSize * 1000)
+      // 1. decode into big float array
+      val rawData = new Array[Float](batchSize * 1000)
       response.rawOutputContents.head
         .asReadOnlyByteBuffer()
         .order(ByteOrder.LITTLE_ENDIAN)
         .asFloatBuffer()
-        .get(arr)
+        .get(rawData)
 
-      val arr2 = Vector.unfold(arr.toList) { k =>
+      // 2. segment into batch format
+      val rawBatch = Vector.unfold(rawData.toList) { k =>
         if (k.length > 0) Some(k.splitAt(1000))
         else None
       }
 
-      arr2.map(
+      // 3. lookup with label map
+      rawBatch.map(
         _.zipWithIndex
           .sortBy(_._1)(Ordering.Float.IeeeOrdering.reverse)
           .slice(0, topK)
@@ -96,6 +89,15 @@ object GrpcClient extends IOApp.Simple:
           .toList
       )
     }
+
+  type LabelMap = Map[Int, String]
+
+  val labelMap: LabelMap = io.circe.parser
+    .decode[LabelMap](read(pwd / "labels.json"))
+    .getOrElse(
+      // if we dont have labels nothing else matters, better to fail fast
+      throw new Exception("Could not parse label map")
+    )
 
   def createBatchInferenceString(predList: Vector[List[(Float, String)]], labels: Vector[String]) =
     predList
@@ -107,7 +109,7 @@ object GrpcClient extends IOApp.Simple:
       }
 
   def run =
-    val batchSize = 16 // 1 or 16
+    val batchSize = 1 // 1 or 16
     grpcStub.use(s =>
       getImageStream(batchSize)
         .evalMap((mir, labels) => s.modelInfer(mir, new Metadata()).map((_, labels)))
