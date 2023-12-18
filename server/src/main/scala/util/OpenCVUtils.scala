@@ -1,11 +1,22 @@
+package util
+
 import org.bytedeco.opencv.opencv_core.Mat
 import org.bytedeco.opencv.opencv_core.Size
 import org.opencv.core.CvType
 import org.bytedeco.opencv.global.opencv_imgcodecs._
 import org.bytedeco.opencv.global.opencv_imgproc.{cvtColor, resize, COLOR_BGR2RGB}
 import org.bytedeco.javacpp.indexer.{UByteRawIndexer, FloatRawIndexer}
+import org.bytedeco.javacpp.BytePointer
+import java.nio.ByteBuffer
 
-object OpenCVUtils {
+object OpenCVUtils:
+
+  def readMatFromBytes(imgBytes: List[Byte]): Mat =
+    val bb = ByteBuffer.wrap(imgBytes.toArray)
+    imdecode(
+      new Mat(new BytePointer(bb)),
+      IMREAD_ANYDEPTH | IMREAD_ANYCOLOR
+    )
 
   def mat2Seq(loadedMat: Mat): Vector[Float] =
     val intMat = new Mat()
@@ -33,4 +44,3 @@ object OpenCVUtils {
         resultArray(gPixelIndex) = data(1) / 255
         resultArray(bPixelIndex) = data(2) / 255
     resultArray.toVector
-}

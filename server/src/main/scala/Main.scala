@@ -1,3 +1,4 @@
+import util.OpenCVUtils.*
 import cats.implicits.*
 import cats.effect.*
 import cats.effect.IO.*
@@ -19,11 +20,10 @@ import org.bytedeco.opencv.global.opencv_imgcodecs._
 import org.bytedeco.opencv.global.opencv_imgproc.resize
 import org.bytedeco.opencv.opencv_core.{Mat, Size}
 import org.opencv.core.CvType
-import OpenCVUtils.mat2Seq
 
 import java.nio.ByteOrder
 
-object GrpcClient extends IOApp.Simple:
+object GrpcClient: // extends IOApp.Simple:
 
   def getImageStream(batchSize: Int) = Files[IO]
     .readAll(Path((pwd / "images.txt").toString))
@@ -108,7 +108,7 @@ object GrpcClient extends IOApp.Simple:
           .mkString("\t", ", ", "\n")
       }
 
-  def run =
+  /*def run =
     val batchSize = 1 // 1 or 16
     grpcStub.use(s =>
       getImageStream(batchSize)
@@ -119,4 +119,4 @@ object GrpcClient extends IOApp.Simple:
         .evalTap((predList, labels) => IO.println(createBatchInferenceString(predList, labels)))
         .compile
         .drain
-    )
+    )*/

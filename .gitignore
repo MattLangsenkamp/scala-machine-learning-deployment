@@ -37,3 +37,5 @@ metals.sbt
 *.plan
 images/
 images.txt
+node_modules/
+package-lock.json
