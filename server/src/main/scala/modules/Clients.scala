@@ -2,6 +2,9 @@ package modules
 
 import domain.OAuth.GenericUser
 
+import cats.syntax.apply.*
+import cats.implicits.*
+
 import cats.effect.Async
 import cats.effect.kernel.Resource
 
@@ -23,8 +26,9 @@ object Clients:
   def make[F[_]: Async](config: Config): Clients[F] = new Clients[F](config) {}
 
 sealed abstract class Clients[F[_]: Async] private (config: Config) {
+
   val grpcStub: Resource[F, GRPCInferenceServiceFs2Grpc[F, Metadata]] = NettyChannelBuilder
-    .forAddress("127.0.0.1", 8001)
+    .forTarget(s"${config.tritonConfig.host}:${config.tritonConfig.port}")
     .usePlaintext()
     .resource[F]
     .flatMap(GRPCInferenceServiceFs2Grpc.stubResource[F])
@@ -33,4 +37,5 @@ sealed abstract class Clients[F[_]: Async] private (config: Config) {
     .default[F]
     .build
 
+  // val clients = (httpClient, grpcStub).tupled
 }

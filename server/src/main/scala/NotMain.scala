@@ -94,10 +94,7 @@ object GrpcClient: // extends IOApp.Simple:
 
   val labelMap: LabelMap = io.circe.parser
     .decode[LabelMap](read(pwd / "labels.json"))
-    .getOrElse(
-      // if we dont have labels nothing else matters, better to fail fast
-      throw new Exception("Could not parse label map")
-    )
+    .getOrElse(throw new Exception("Could not parse label map"))
 
   def createBatchInferenceString(predList: Vector[List[(Float, String)]], labels: Vector[String]) =
     predList

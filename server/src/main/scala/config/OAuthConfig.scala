@@ -4,18 +4,15 @@ import ciris.*
 import ciris.circe.circeConfigDecoder
 import io.circe.Decoder
 import java.nio.file.Paths
+import cats.*
+import cats.syntax.*
+import cats.implicits.*
 
 final case class OAuthConfig(key: String, secret: Secret[String])
 
 object OAuthConfig:
 
-  given oAuthDecoder: Decoder[OAuthConfig] = Decoder.instance { h =>
-    for
-      key    <- h.get[String]("key")
-      secret <- h.get[String]("secret")
-    yield OAuthConfig(key, Secret(secret))
-  }
-
-  given oAuthConfigDecoder: ConfigDecoder[String, OAuthConfig] = circeConfigDecoder("OAuthConfig")
-
-  val conf = file(Paths.get("src/main/resources/oAuthConfig.json")).as[OAuthConfig]
+  val conf: ConfigValue[Effect, OAuthConfig] = (
+    env("KEY").as[String],
+    env("SECRET").secret
+  ).parMapN(OAuthConfig.apply)

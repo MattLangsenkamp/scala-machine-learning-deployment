@@ -19,18 +19,20 @@ import org.http4s.HttpRoutes
 import org.http4s.HttpApp
 import org.http4s.server.middleware.RequestLogger
 import org.http4s.server.middleware.ResponseLogger
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.syntax.*
 
 object Routes:
 
-  def make[F[_]: Monad: MonadThrow: Concurrent: Async](
+  def make[F[_]: Monad: MonadThrow: Concurrent: Async: Logger](
       algebras: Algebras[F],
       security: Security[F]
   ): Routes[F] = new Routes(algebras, security) {}
 
-sealed abstract class Routes[F[_]: Monad: MonadThrow: Concurrent: Async] private (
+sealed abstract class Routes[F[_]: Monad: MonadThrow: Concurrent: Async: Logger] private (
     algebras: Algebras[F],
     security: Security[F]
-) {
+):
 
   private val policy = CORS.policy
     .withAllowCredentials(true)
@@ -55,5 +57,4 @@ sealed abstract class Routes[F[_]: Monad: MonadThrow: Concurrent: Async] private
     ResponseLogger.httpApp(true, true)(http)
   }
 
-  val httpApp: HttpApp[F] = loggers(corsRoutes.orNotFound)
-}
+  val httpApp: HttpApp[F] = corsRoutes.orNotFound // loggers( )

@@ -3,6 +3,7 @@ import org.http4s.client.Client
 import cats.Applicative
 import domain.OAuth.{given, *}
 import io.circe.syntax.*
+import io.circe.parser.*
 import cats.implicits._
 import dev.profunktor.auth.*
 import dev.profunktor.auth.jwt.*
@@ -35,4 +36,4 @@ object AuthAlg:
       jwtEncode[F](c, jwtAuth.secretKey, jwtAlgorithm)
 
     def authenticateUser(token: JwtToken)(claim: JwtClaim): F[Option[GenericUser]] =
-      claim.content.asJson.as[GenericUser].toOption.pure[F]
+      parse(claim.content).toOption.flatMap(_.as[GenericUser].toOption).pure[F]

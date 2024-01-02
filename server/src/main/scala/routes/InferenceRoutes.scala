@@ -1,6 +1,8 @@
 package routes
 
 import cats.{Monad, MonadThrow}
+import cats.*
+import cats.syntax.*
 import cats.implicits.*
 
 import cats.effect.std.Console
@@ -44,24 +46,29 @@ final case class InferenceRoutes[F[_]: MonadThrow: Concurrent: Monad: Async](
 
   private object TopKQueryParamMatcher extends QueryParamDecoderMatcher[Int]("top_k")
 
+  private object BatchSizeQueryParamMatcher extends QueryParamDecoderMatcher[Int]("batch_size")
+
   val authedRoutes: AuthedRoutes[GenericUser, F] = AuthedRoutes.of {
+
+    case GET -> Root / "hi" as user => Ok(user.email)
+
     case req @ POST -> Root / "infer"
         :? ModelQueryParamMatcher(model)
         :? TopKQueryParamMatcher(topK)
+        :? BatchSizeQueryParamMatcher(batchSize)
         as user =>
-      imgCls.modelExist(model, "1").flatMap { i =>
-        if i then NotFound("Model not found")
+      imgCls.modelExist(model, "1").flatMap { modelFound =>
+        if !modelFound then Ok("Model not found")
         else
-
           req.req.decode[Multipart[F]] { m =>
             Stream(m.parts*)
               .evalMap(imgCls.upload)
-              .through(imgCls.preProcessPipe(16))
-              .evalMap(v => imgCls.infer(v, 16, model))
-              .evalMap(v => imgCls.postProcess(v, 16, 10))
+              .through(imgCls.preProcessPipe(batchSize))
+              .evalMap(v => imgCls.infer(v, batchSize, model))
+              .evalMap(v => imgCls.postProcess(v, batchSize, topK))
               .compile
               .toList
-              .flatMap(l => Ok(l.asJson))
+              .flatMap(l => Ok(l.reduce(_ |+| _).asJson))
           }
       }
   }

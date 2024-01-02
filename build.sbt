@@ -1,7 +1,5 @@
 import org.scalajs.linker.interface.ModuleSplitStyle
 
-ThisBuild / scalaVersion := scala3Version
-
 // 1 create dependency variables
 val scala3Version    = "3.3.1"
 val fs2Version       = "3.9.3"
@@ -13,12 +11,11 @@ val http4sVersion    = "0.23.24"
 val http4sDomVersion = "0.2.11"
 val http4sJwtVersion = "1.2.1"
 
+ThisBuild / scalaVersion := scala3Version
+
 // 2 create protobuf module
 lazy val protobuf = project
   .in(file("protobuf"))
-  .settings(
-    name := "protobuf"
-  )
   .enablePlugins(Fs2Grpc) // explicitly depend on gRPC plugin
 
 lazy val front = project
@@ -38,7 +35,11 @@ lazy val front = project
       "org.http4s"      %%% "http4s-circe"  % "0.23.24",
       "org.scalameta"   %%% "munit"         % "0.7.29" % Test
     ),
-    jsEnv := new org.scalajs.jsenv.nodejs.NodeJSEnv()
+    libraryDependencies ++= Seq(
+      "io.circe" %%% "circe-core",
+      "io.circe" %%% "circe-generic",
+      "io.circe" %%% "circe-parser"
+    ).map(_ % circeVersion)
   )
 
 lazy val server = project
@@ -48,13 +49,20 @@ lazy val server = project
     version := "0.0.1",
     // 3 add dependencies
     libraryDependencies ++= Seq(
-      "io.grpc"         % "grpc-netty-shaded" % scalapb.compiler.Version.grpcJavaVersion,
-      "org.bytedeco"    % "javacv-platform"   % openCVVersion,
-      "com.lihaoyi"    %% "os-lib"            % osLibVersion,
-      "org.scalameta"  %% "munit"             % "0.7.29" % Test,
-      "dev.profunktor" %% "http4s-jwt-auth"   % http4sJwtVersion
+      "org.bytedeco"   % "javacv-platform" % openCVVersion,
+      "ch.qos.logback" % "logback-classic" % "1.2.11" % Runtime
     ),
-    libraryDependencies ++= Seq("is.cir" %% "ciris", "is.cir" %% "ciris-circe").map(_ % cirisVersion),
+    libraryDependencies ++= Seq(
+      "io.grpc"         % "grpc-netty-shaded" % scalapb.compiler.Version.grpcJavaVersion,
+      "com.lihaoyi"    %% "os-lib"            % osLibVersion,
+      "dev.profunktor" %% "http4s-jwt-auth"   % http4sJwtVersion,
+      "org.typelevel"  %% "log4cats-slf4j"    % "2.6.0"
+    ),
+    libraryDependencies ++= Seq(
+      "is.cir" %% "ciris",
+      "is.cir" %% "ciris-circe",
+      "is.cir" %% "ciris-http4s"
+    ).map(_ % cirisVersion),
     libraryDependencies ++= Seq("co.fs2" %% "fs2-core", "co.fs2" %% "fs2-io").map(_ % fs2Version),
     libraryDependencies ++= Seq(
       "io.circe" %% "circe-core",
@@ -67,6 +75,20 @@ lazy val server = project
       "org.http4s" %% "http4s-dsl",
       "org.http4s" %% "http4s-circe"
     ).map(_ % http4sVersion),
-    fork := true
+    fork := true,
+    docker / dockerfile := {
+      val appDir: File = stage.value
+      val targetDir    = "/app"
+
+      new Dockerfile {
+        from("eclipse-temurin:21-jre")
+        expose(8080)
+        expose(8081)
+        entryPoint(s"$targetDir/bin/${executableScriptName.value}")
+        copy(appDir, targetDir, chown = "daemon:daemon")
+      }
+    },
+    docker / imageNames := Seq(ImageName("mattlangsenkamp/scalamachinelearningdeployment-mid:latest"))
   )
+  .enablePlugins(sbtdocker.DockerPlugin, JavaAppPackaging)
   .dependsOn(protobuf) // explicitly depend on protobuf module

@@ -12,8 +12,14 @@ import alg.GithubAlg
 import alg.AuthAlg
 import org.http4s.headers.Cookie
 import domain.OAuth.GenericUser
+import io.circe.generic.semiauto.*
+import org.http4s.circe.CirceEntityEncoder._
+import io.circe.Encoder
+import dev.profunktor.auth.jwt.JwtToken
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.syntax._
 
-final case class OAuthRoutes[F[_]: Monad](
+final case class OAuthRoutes[F[_]: Monad: Logger](
     githubAlg: GithubAlg[F],
     authAlg: AuthAlg[F]
 ) extends Http4sDsl[F]:
@@ -29,20 +35,7 @@ final case class OAuthRoutes[F[_]: Monad](
         userInfo        <- githubAlg.getUserInfo(accessTokenResp)
         jwt             <- authAlg.signJwt(GenericUser(userInfo.head.email))
       yield jwt.value
-      signedToken.flatMap { st =>
-        Ok("successfully logged in").map(
-          _.addCookie(
-            ResponseCookie(
-              "Authorization",
-              st,
-              httpOnly = false,
-              sameSite = Some(SameSite.Strict),
-              secure = false,
-              path = Some("/")
-            )
-          )
-        )
-      }
+      signedToken.flatMap(Ok(_))
   }
 
   val routes: HttpRoutes[F] = Router(

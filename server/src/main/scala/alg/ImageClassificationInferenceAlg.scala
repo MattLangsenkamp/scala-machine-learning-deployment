@@ -5,22 +5,33 @@ import cats.syntax.*
 import cats.implicits.*
 import cats.effect.syntax.*
 import cats.effect.{Concurrent, Async}
+import cats.effect.kernel.{Ref, Sync}
 
 import domain.ImageClassification.{given, *}
-
-import org.http4s.multipart.Part
-import fs2.Pipe
+import util.OpenCVUtils.*
 
 import io.grpc.Metadata
-import inference.grpc_service.{ModelInferResponse, GRPCInferenceServiceFs2Grpc, ModelConfigRequest}
-import cats.effect.kernel.Sync
-import util.OpenCVUtils.*
-import fs2.Chunk
-import fs2.*
-import inference.grpc_service.ModelInferRequest
+import inference.grpc_service.{
+  ModelInferResponse,
+  GRPCInferenceServiceFs2Grpc,
+  ModelConfigRequest,
+  ModelInferRequest
+}
 import inference.grpc_service.InferTensorContents
 import inference.grpc_service.ModelInferRequest.InferInputTensor
 import java.nio.ByteOrder
+
+import org.http4s.multipart.Part
+import fs2.*
+import fs2.Pipe
+import fs2.Chunk
+
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.syntax._
+import scala.util.Try
+import inference.grpc_service.ModelConfigResponse
+import inference.grpc_service.ServerLiveRequest
+import inference.grpc_service.ServerLiveResponse
 
 trait ImageClassificationInferenceAlg[F[_], INPUT, OUTPUT]:
 
@@ -38,15 +49,43 @@ trait ImageClassificationInferenceAlg[F[_], INPUT, OUTPUT]:
 
 object ImageClassificationInferenceAlg:
 
-  def makeTriton[F[_]: Sync](
+  def makeTriton[F[_]: Sync: Logger](
       labelMap: LabelMap,
-      grpcStub: GRPCInferenceServiceFs2Grpc[F, Metadata]
+      grpcStub: GRPCInferenceServiceFs2Grpc[F, Metadata],
+      modelCacheR: Ref[F, Set[(String, String)]]
   ): ImageClassificationInferenceAlg[F, TritonBatch, ModelInferResponse] =
     new ImageClassificationInferenceAlg:
 
       def modelExist(model: String, version: String): F[Boolean] =
-        for modelConfig <- grpcStub.modelConfig(new ModelConfigRequest(model, version), new Metadata())
-        yield modelConfig.config.isEmpty
+        for
+          modelCache <- modelCacheR.get
+          modelExistLocal = modelCache((model, version))
+          modelExists <-
+            if modelExistLocal then Sync[F].pure(modelExistLocal)
+            else
+              for
+                _ <- grpcStub
+                  .serverLive(new ServerLiveRequest(), new Metadata())
+                  .recoverWith { case e: Exception =>
+                    error"${e.getStackTrace().map(_.toString()).mkString("\n")}" *> ServerLiveResponse()
+                      .pure[F]
+                  }
+                modelConfig <-
+                  grpcStub
+                    .modelConfig(
+                      new ModelConfigRequest(model, version),
+                      new Metadata()
+                    )
+                    .recoverWith { case e: Exception =>
+                      error"${e.getStackTrace().map(_.toString()).mkString("\n")}" *>
+                        warn"Could not find model $model with version $version"
+                        *> ModelConfigResponse().pure[F]
+                    }
+              yield !modelConfig.config.isEmpty
+          _ <- // add the model to the local cache if we couldn't find it originally
+            if modelExists & !modelExistLocal then modelCacheR.update(_ + ((model, version)))
+            else Sync[F].unit
+        yield modelExists
 
       def upload(part: Part[F]): F[ImageUpload] =
         (part.filename.get, part.body.compile.toList).sequence
@@ -61,6 +100,7 @@ object ImageClassificationInferenceAlg:
         in =>
           in.chunkN(batchSize, allowFewer = true)
             .evalMap(c =>
+              // image processing can be an expensive task, need to make sure it isn't blocking IO stuff
               Sync[F].blocking {
                 c.map { imgUp =>
                   val mat = readMatFromBytes(imgUp._2)
@@ -84,6 +124,9 @@ object ImageClassificationInferenceAlg:
           ModelInferRequest(model, "1", inputs = Seq(it))
         grpcStub
           .modelInfer(makeModelInferRequest(preprocessed._2, batchSize, model), new Metadata())
+          .recoverWith { case e: Exception =>
+            info"hi" *> ModelInferResponse().pure[F]
+          }
           .map((preprocessed._1, _))
 
       def postProcess(
@@ -109,7 +152,9 @@ object ImageClassificationInferenceAlg:
 
         def createClassificationOutput(batches: Vector[Vector[Float]]): ClassificationOutput =
           def lookupLabels(probabilities: Vector[Float]): LabelProbabilities =
-            Map.from(probabilities.zipWithIndex.map((score, ind) => (labelMap(ind), score)))
+            val labelScorePairs = probabilities.zipWithIndex.map((score, ind) => (labelMap(ind), score))
+            val sortedLabelScorePairs = labelScorePairs.sortBy(_._2)(Ordering.Float.IeeeOrdering.reverse)
+            Map.from(sortedLabelScorePairs.slice(0, topK))
 
           Map.from {
             inferred._1.zip(batches).map((fname, probabilities) => (fname, lookupLabels(probabilities)))

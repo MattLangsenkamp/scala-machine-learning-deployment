@@ -39,3 +39,7 @@ images/
 images.txt
 node_modules/
 package-lock.json
+
+# auth
+oAuthConfig.json
+.env

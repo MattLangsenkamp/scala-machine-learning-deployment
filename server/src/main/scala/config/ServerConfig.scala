@@ -1,25 +1,20 @@
 package config
 
+import cats.syntax.*
+import cats.implicits.*
 import com.comcast.ip4s.*
 import ciris.*
+import ciris.http4s.*
 import ciris.circe.circeConfigDecoder
 import io.circe.Decoder
 import java.nio.file.Paths
 
-final case class ServerConfig(port: Port, host: Host)
+final case class ServerConfig(port: Port, host: Host, labelsDir: String)
 
 object ServerConfig:
 
-  given serverDecoder: Decoder[ServerConfig] = Decoder.instance { h =>
-    for
-      port <- h.get[String]("port")
-      host <- h.get[String]("host")
-    yield ServerConfig(
-      Port.fromString(port).getOrElse(port"8080"),
-      Host.fromString(host).getOrElse(host"localhost")
-    )
-  }
-
-  given serverConfigDecoder: ConfigDecoder[String, ServerConfig] = circeConfigDecoder("ServerConfig")
-
-  val conf = file(Paths.get("src/main/resources/serverConfig.json")).as[ServerConfig]
+  val conf: ConfigValue[Effect, ServerConfig] = (
+    env("SERVER_PORT").as[Port].default(port"8080"),
+    env("SERVER_HOST").as[Host].default(host"127.0.0.1"),
+    env("LABELS_DIR").as[String]
+  ).parMapN(ServerConfig.apply)
