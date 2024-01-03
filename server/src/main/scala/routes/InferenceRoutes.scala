@@ -58,7 +58,7 @@ final case class InferenceRoutes[F[_]: MonadThrow: Concurrent: Monad: Async](
         :? BatchSizeQueryParamMatcher(batchSize)
         as user =>
       imgCls.modelExist(model, "1").flatMap { modelFound =>
-        if !modelFound then Ok("Model not found")
+        if !modelFound then NotFound("Model not found")
         else
           req.req.decode[Multipart[F]] { m =>
             Stream(m.parts*)

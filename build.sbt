@@ -18,8 +18,8 @@ lazy val protobuf = project
   .in(file("protobuf"))
   .enablePlugins(Fs2Grpc) // explicitly depend on gRPC plugin
 
-lazy val front = project
-  .in(file("front"))
+lazy val client = project
+  .in(file("client"))
   .enablePlugins(ScalaJSPlugin)
   .settings(
     scalaJSLinkerConfig ~= {

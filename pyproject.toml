@@ -2,7 +2,7 @@
 name = "scalamachinelearningdeployment"
 version = "0.0.1"
 description = ""
-authors = ["Your Name <you@example.com>"]
+authors = ["Matt Langsenkamp mattlangsenkamp@gmail.com"]
 readme = "README.md"
 
 [tool.poetry.dependencies]

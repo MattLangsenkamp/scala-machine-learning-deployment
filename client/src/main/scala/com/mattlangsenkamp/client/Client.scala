@@ -47,11 +47,6 @@ import com.mattlangsenkamp.client.Client.ClassificationOutput
 @JSExportTopLevel("TyrianApp")
 object Client extends TyrianApp[Msg, Model]:
 
-  private def consoleLog(msg: String): Cmd[IO, Nothing] =
-    Cmd.SideEffect {
-      println(msg)
-    }
-
   private val client = FetchClientBuilder[IO]
     .withMode(RequestMode.cors)
     .withCredentials(RequestCredentials.include)
@@ -87,10 +82,7 @@ object Client extends TyrianApp[Msg, Model]:
         init
       )
       text <- jsPromise.text()
-    yield {
-      println(parse(text).toOption)
-      Msg.SetResults(parse(text).toOption.flatMap(_.as[ClassificationOutput].toOption))
-    }
+    yield Msg.SetResults(parse(text).toOption.flatMap(_.as[ClassificationOutput].toOption))
     Cmd.Run(IO.fromFuture(IO(co)))
 
   def router: Location => Msg =
@@ -107,7 +99,13 @@ object Client extends TyrianApp[Msg, Model]:
 
   def init(flags: Map[String, String]): (Model, Cmd[IO, Msg]) =
     (
-      Model(Option.empty, Option.empty, "http://localhost:5173/callback", Option.empty),
+      Model(
+        Option.empty,
+        Option.empty,
+        "http://localhost:5173/callback",
+        "http://localhost:8080",
+        Option.empty
+      ),
       Cmd.Batch(Cmd.emit(Msg.LookForJWT), Cmd.emit(Msg.GetEnvVars))
     )
 
@@ -132,13 +130,18 @@ object Client extends TyrianApp[Msg, Model]:
       val code = pathWithCode.replace("/callback?code=", "")
       val io: IO[Msg] =
         client
-          .expect[String](f"http://localhost:8080/auth/access_token?code=$code")
+          .expect[String](f"${model.serverUri}/auth/access_token?code=$code")
           .map(s => Msg.SetJWT(s.replace("\"", "")))
           .handleError(_ => Msg.ConsoleLog(f"failed to login with $code"))
       (model, Cmd.Run(io))
     case Msg.NoOp => (model, Cmd.None)
     case Msg.ConsoleLog(log) =>
-      (model, consoleLog(log))
+      (
+        model,
+        Cmd.SideEffect {
+          println(log)
+        }
+      )
     case Msg.LoadImage =>
       (
         model,
@@ -155,16 +158,18 @@ object Client extends TyrianApp[Msg, Model]:
         val cb =
           if vcb != "undefined" then vcb
           else "https://mldemo.mattlangsenkamp.com/callback"
+        val v_server_uri = meta.env.VITE_SERVER_URI.toString
+        val server_uri =
+          if v_server_uri != "undefined" then v_server_uri
+          else "https://mldemo.mattlangsenkamp.com"
         (model.copy(callbackUri = cb), Cmd.None)
       else (model, Cmd.None)
 
     case Msg.UploadImage =>
-      println("got clicked! cool!")
       val cmd = model.authorizationJWT.fold(Cmd.None)(myFetch(_))
       (model, cmd)
 
     case Msg.SetResults(res) =>
-      println(res)
       (model.copy(classificationOutput = res), Cmd.None)
 
   def githubPage(callback: String) =
@@ -228,6 +233,7 @@ case class Model(
     authorizationJWT: Option[String],
     image: Option[String],
     callbackUri: String,
+    serverUri: String,
     classificationOutput: Option[ClassificationOutput]
 )
 

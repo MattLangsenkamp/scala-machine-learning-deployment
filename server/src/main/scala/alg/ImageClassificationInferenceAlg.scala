@@ -58,30 +58,23 @@ object ImageClassificationInferenceAlg:
 
       def modelExist(model: String, version: String): F[Boolean] =
         for
-          modelCache <- modelCacheR.get
-          modelExistLocal = modelCache((model, version))
+          modelExistLocal <- modelCacheR.get.map(_(model, version))
           modelExists <-
-            if modelExistLocal then Sync[F].pure(modelExistLocal)
+            if modelExistLocal then modelExistLocal.pure[F]
             else
-              for
-                _ <- grpcStub
-                  .serverLive(new ServerLiveRequest(), new Metadata())
-                  .recoverWith { case e: Exception =>
-                    error"${e.getStackTrace().map(_.toString()).mkString("\n")}" *> ServerLiveResponse()
-                      .pure[F]
-                  }
-                modelConfig <-
+              for modelExistTriton <-
                   grpcStub
                     .modelConfig(
                       new ModelConfigRequest(model, version),
                       new Metadata()
                     )
-                    .recoverWith { case e: Exception =>
+                    .map(modelConfig => !modelConfig.config.isEmpty)
+                    .handleErrorWith(e =>
                       error"${e.getStackTrace().map(_.toString()).mkString("\n")}" *>
-                        warn"Could not find model $model with version $version"
-                        *> ModelConfigResponse().pure[F]
-                    }
-              yield !modelConfig.config.isEmpty
+                        warn"Could not find model $model with version $version" *>
+                        false.pure[F]
+                    )
+              yield modelExistTriton
           _ <- // add the model to the local cache if we couldn't find it originally
             if modelExists & !modelExistLocal then modelCacheR.update(_ + ((model, version)))
             else Sync[F].unit
