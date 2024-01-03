@@ -1,0 +1,32 @@
+services:
+  client:
+    image: mattlangsenkamp/classificationclient:dev
+    ports:
+      - "5173:5173"
+    depends_on:
+      - server
+  server:
+    image: mattlangsenkamp/scalamachinelearningdeployment:latest
+    ports:
+      - "8080:8080"
+    depends_on:
+      - grpctriton
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - TRITON_HOST=grpctriton
+      - KEY=${GITHUB_CLIENT_KEY}
+      - SECRET=${GITHUB_CLIENT_SECRET}
+      - LABELS_DIR=/labels.json
+  grpctriton:
+    image: mattlangsenkamp/tritondeployment:latest
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+      - "8002:8002"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [ gpu ]

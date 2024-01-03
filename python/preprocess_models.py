@@ -6,6 +6,9 @@ import json
 
 if __name__ == "__main__":
     # 1 This will automatically download the model from the ultralytics repo
+    old_dir = os.getcwd()
+    os.makedirs("triton", exist_ok=True)
+    os.chdir(old_dir + "//triton")
     orig_model = YOLO("yolov8n-cls.pt")
 
     # 2 export model to onnx format in batch sizes 1 and 16
@@ -43,5 +46,6 @@ if __name__ == "__main__":
 
     # 4 save the label lookup table
     lookup_dict = eval(model.metadata_props[-1].value)
+    os.chdir(old_dir)
     with open("labels.json", "w") as outfile:
         json.dump(lookup_dict, outfile)

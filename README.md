@@ -45,9 +45,25 @@ Compile the project with the following command:
 sbt compile
 ```
 
-docker run --gpus all -it -v $(pwd)/:/workspace --rm nvcr.io/nvidia/tensorrt:23.10-py3 bash
-trtexec --onnx=yolov8n-cls-1.onnx --saveEngine=yolov8n-cls-1.plan --explicitBatch
-trtexec --onnx=yolov8n-cls-16.onnx --saveEngine=yolov8n-cls-16.plan --explicitBatch
+touch vite.config.js
+touch index.html
+touch main.js
+touch package.json
 
-docker buildx build -t mattstriton .
-docker run --gpus all -p 8000:8000 -p 8001:8001 -p 8002:8002 --rm mattstriton
+```
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.13.2")
+addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject"      % "1.2.0")
+addSbtPlugin("org.typelevel" % "sbt-typelevel" % "0.4.21")
+```
+
+mkdir -p front/shared/src/main/scala/com/mattlangsenkamp/client
+touch front/shared/src/main/scala/com/mattlangsenkamp/client/Client.scala
+
+mkdir -p server/jvm/
+mv src/ server/jvm/
+
+mv protobuf/src/ protobuf/jvm/
+
+nvm install node 20
+nvm use node 20
+npm install
