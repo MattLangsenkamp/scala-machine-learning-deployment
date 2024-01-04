@@ -11,7 +11,7 @@ import cats.syntax.*
 import cats.implicits.*
 import cats.effect.{Concurrent, Async}
 
-import domain.OAuth.GenericUser
+import com.mattlangsenkamp.core.OAuth.*
 import dev.profunktor.auth.JwtAuthMiddleware
 import org.http4s.CacheDirective.`private`
 import org.http4s.AuthedRoutes

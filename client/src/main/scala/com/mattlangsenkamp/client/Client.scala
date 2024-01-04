@@ -1,5 +1,3 @@
-package com.mattlangsenkamp.client
-
 import tyrian.*
 import tyrian.CSS
 import tyrian.CSS.*
@@ -41,8 +39,9 @@ import scala.concurrent.Await
 import cats.effect.Deferred
 import io.circe.syntax.*
 import io.circe.parser.*
+import io.circe.*
 import scala.concurrent.Future
-import com.mattlangsenkamp.client.Client.ClassificationOutput
+import com.mattlangsenkamp.core.ImageClassification.ClassificationOutput
 
 @JSExportTopLevel("TyrianApp")
 object Client extends TyrianApp[Msg, Model]:

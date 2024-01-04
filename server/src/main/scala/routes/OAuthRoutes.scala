@@ -11,7 +11,7 @@ import org.http4s.server.Router
 import alg.GithubAlg
 import alg.AuthAlg
 import org.http4s.headers.Cookie
-import domain.OAuth.GenericUser
+import com.mattlangsenkamp.core.OAuth.GenericUser
 import io.circe.generic.semiauto.*
 import org.http4s.circe.CirceEntityEncoder._
 import io.circe.Encoder

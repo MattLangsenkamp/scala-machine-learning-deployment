@@ -18,6 +18,16 @@ lazy val protobuf = project
   .in(file("protobuf"))
   .enablePlugins(Fs2Grpc) // explicitly depend on gRPC plugin
 
+lazy val core = project
+  .in(file("core"))
+  .settings(
+    libraryDependencies ++= Seq(
+      "io.circe" %%% "circe-core",
+      "io.circe" %%% "circe-generic",
+      "io.circe" %%% "circe-parser"
+    ).map(_ % circeVersion)
+  )
+
 lazy val client = project
   .in(file("client"))
   .enablePlugins(ScalaJSPlugin)
@@ -30,7 +40,6 @@ lazy val client = project
     libraryDependencies ++= Seq(
       "io.indigoengine" %%% "tyrian-io"     % "0.8.0",
       "org.http4s"      %%% "http4s-dom"    % http4sDomVersion,
-      "io.circe"        %%% "circe-generic" % circeVersion,
       "org.http4s"      %%% "http4s-client" % "0.23.24",
       "org.http4s"      %%% "http4s-circe"  % "0.23.24",
       "org.scalameta"   %%% "munit"         % "0.7.29" % Test
@@ -41,6 +50,7 @@ lazy val client = project
       "io.circe" %%% "circe-parser"
     ).map(_ % circeVersion)
   )
+  .dependsOn(core)
 
 lazy val server = project
   .in(file("server"))
@@ -65,11 +75,6 @@ lazy val server = project
     ).map(_ % cirisVersion),
     libraryDependencies ++= Seq("co.fs2" %% "fs2-core", "co.fs2" %% "fs2-io").map(_ % fs2Version),
     libraryDependencies ++= Seq(
-      "io.circe" %% "circe-core",
-      "io.circe" %% "circe-generic",
-      "io.circe" %% "circe-parser"
-    ).map(_ % circeVersion),
-    libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-ember-client",
       "org.http4s" %% "http4s-ember-server",
       "org.http4s" %% "http4s-dsl",
@@ -91,4 +96,4 @@ lazy val server = project
     docker / imageNames := Seq(ImageName("mattlangsenkamp/scalamachinelearningdeployment-mid:latest"))
   )
   .enablePlugins(sbtdocker.DockerPlugin, JavaAppPackaging)
-  .dependsOn(protobuf) // explicitly depend on protobuf module
+  .dependsOn(protobuf, core) // explicitly depend on protobuf module

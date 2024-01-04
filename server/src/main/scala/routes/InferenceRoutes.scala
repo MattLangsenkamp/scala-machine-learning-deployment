@@ -26,8 +26,8 @@ import org.http4s.circe.*
 
 import alg.ImageClassificationInferenceAlg
 
-import domain.OAuth.GenericUser
-import domain.ImageClassification.*
+import com.mattlangsenkamp.core.OAuth.GenericUser
+import com.mattlangsenkamp.core.ImageClassification.*
 
 import inference.grpc_service.{
   GRPCInferenceServiceFs2Grpc,
