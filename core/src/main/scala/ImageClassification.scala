@@ -1,9 +1,9 @@
-package domain
+package com.mattlangsenkamp.core
+
 import io.circe.syntax.*
 import io.circe.*
 import io.circe.generic.auto.*
 import cats.kernel.Monoid
-import os.{GlobSyntax, /, read, pwd}
 
 import cats.*
 import cats.syntax.*
@@ -21,11 +21,6 @@ object ImageClassification:
 
   type Index    = Int
   type LabelMap = Map[Index, Label]
-
-  def loadLabelMap(path: String): LabelMap =
-    io.circe.parser
-      .decode[LabelMap](read(os.Path(path)))
-      .getOrElse(throw new Exception("Could not parse label map"))
 
   type ImageUpload = (Filename, List[Byte])
   type TritonBatch = (Vector[Filename], Vector[Float])

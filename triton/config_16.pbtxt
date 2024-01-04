@@ -1,4 +1,4 @@
-name: "yolov8_16_batch"
+name: "yolov8_16"
 backend: "tensorrt"
 max_batch_size : 16
 input [

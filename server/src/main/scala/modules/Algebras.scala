@@ -4,7 +4,7 @@ import alg.{ImageClassificationInferenceAlg, GithubAlg}
 import inference.grpc_service.ModelInferResponse
 import org.http4s.client.Client
 import config.Config
-import domain.ImageClassification.{LabelMap, TritonBatch}
+import com.mattlangsenkamp.core.ImageClassification.{LabelMap, TritonBatch}
 
 import cats.effect.{Sync, Concurrent, Async}
 import cats.{Applicative, ApplicativeThrow}

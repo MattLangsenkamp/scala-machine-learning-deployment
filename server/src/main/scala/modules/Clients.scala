@@ -1,6 +1,6 @@
 package modules
 
-import domain.OAuth.GenericUser
+import com.mattlangsenkamp.core.OAuth.GenericUser
 
 import cats.syntax.apply.*
 import cats.implicits.*

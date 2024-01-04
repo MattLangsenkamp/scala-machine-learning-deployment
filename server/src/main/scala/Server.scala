@@ -23,14 +23,19 @@ import org.http4s.client.Client
 import pdi.jwt.JwtAlgorithm
 import dev.profunktor.auth.jwt.JwtAuth
 import dev.profunktor.auth.jwt.JwtSymmetricAuth
-import domain.ImageClassification.loadLabelMap
 import modules.Clients
 import modules.Algebras
 import modules.Security
 import modules.Routes
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-
+import os.{GlobSyntax, /, read, pwd}
+import com.mattlangsenkamp.core.ImageClassification.*
 object Server extends IOApp.Simple:
+
+  def loadLabelMap(path: String): LabelMap =
+    io.circe.parser
+      .decode[LabelMap](read(os.Path(path)))
+      .getOrElse(throw new Exception("Could not parse label map"))
 
   given logger: SelfAwareStructuredLogger[IO] = Slf4jLogger.getLogger[IO]
 

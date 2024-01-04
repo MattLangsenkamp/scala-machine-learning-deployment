@@ -1,6 +1,7 @@
 package alg
 
-import domain.OAuth.{*, given}
+import com.mattlangsenkamp.core.OAuth.{*, given}
+import com.mattlangsenkamp.server.domain.OAuth.given
 import cats.Applicative
 import org.http4s.client.Client
 import org.http4s.ember.client.*

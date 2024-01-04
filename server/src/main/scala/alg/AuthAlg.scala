@@ -1,7 +1,7 @@
 package alg
 import org.http4s.client.Client
 import cats.Applicative
-import domain.OAuth.{given, *}
+import com.mattlangsenkamp.core.OAuth.{given, *}
 import io.circe.syntax.*
 import io.circe.parser.*
 import cats.implicits._

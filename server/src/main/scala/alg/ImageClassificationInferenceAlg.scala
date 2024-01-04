@@ -7,7 +7,7 @@ import cats.effect.syntax.*
 import cats.effect.{Concurrent, Async}
 import cats.effect.kernel.{Ref, Sync}
 
-import domain.ImageClassification.{given, *}
+import com.mattlangsenkamp.core.ImageClassification.{given, *}
 import util.OpenCVUtils.*
 
 import io.grpc.Metadata
