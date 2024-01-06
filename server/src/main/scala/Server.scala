@@ -51,7 +51,7 @@ object Server extends IOApp.Simple:
       config <- Config.conf.load[IO].toResource
       labelMap = loadLabelMap(config.serverConfig.labelsDir)
       clients  = Clients.make[IO](config)
-      modelCacheR <- Ref[IO].of(Set[(String, String)]()).toResource
+      modelCacheR <- Ref[IO].of(Map[(String, String), ModelInfo]()).toResource
       httpClient  <- clients.httpClient
       grpcStub    <- clients.grpcStub
       security = Security.make[IO](config, httpClient)

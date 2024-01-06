@@ -2,12 +2,13 @@ package com.mattlangsenkamp.core
 
 import io.circe.syntax.*
 import io.circe.*
-import io.circe.generic.auto.*
+import io.circe.generic.semiauto.*
 import cats.kernel.Monoid
 
 import cats.*
 import cats.syntax.*
 import cats.implicits.*
+import org.typelevel.jawn.AsyncParser.Mode
 
 object ImageClassification:
 
@@ -39,3 +40,11 @@ object ImageClassification:
 
     def combine(x: ClassificationOutput, y: ClassificationOutput): ClassificationOutput =
       x |+| y
+
+  case class ModelInfo(modelName: String, batchSize: Int)
+
+  case class ModelInfos(modelInfos: List[ModelInfo])
+
+  given modelInfoCodec: Codec[ModelInfo] = deriveCodec[ModelInfo]
+
+  given modelInfosCodec: Codec[ModelInfos] = deriveCodec[ModelInfos]

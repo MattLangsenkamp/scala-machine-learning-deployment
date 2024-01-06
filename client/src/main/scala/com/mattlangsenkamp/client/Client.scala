@@ -22,10 +22,9 @@ import org.scalajs.dom.HTMLImageElement
 import tyrian.cmds.File
 import org.scalajs.dom
 import org.scalajs.dom.html
-import org.http4s.UrlForm
-import org.http4s.Request
-import org.http4s.{Method, EntityBody}
-import org.http4s.Entity
+import org.http4s.*
+import org.http4s.implicits.*
+import org.http4s.syntax.*
 import org.http4s.multipart.Multipart
 import org.http4s.multipart.Part
 import org.scalajs.dom.{Fetch, HttpMethod, BodyInit, RequestInit, FormData, HeadersInit}
@@ -42,6 +41,9 @@ import io.circe.parser.*
 import io.circe.*
 import scala.concurrent.Future
 import com.mattlangsenkamp.core.ImageClassification.ClassificationOutput
+import com.mattlangsenkamp.core.ImageClassification.ModelInfo
+import org.http4s.Header
+import org.http4s.Headers
 
 @JSExportTopLevel("TyrianApp")
 object Client extends TyrianApp[Msg, Model]:
@@ -103,7 +105,8 @@ object Client extends TyrianApp[Msg, Model]:
         Option.empty,
         "http://localhost:5173/callback",
         "http://localhost:8080",
-        Option.empty
+        Option.empty,
+        List("hii")
       ),
       Cmd.Batch(Cmd.emit(Msg.LookForJWT), Cmd.emit(Msg.GetEnvVars))
     )
@@ -124,7 +127,10 @@ object Client extends TyrianApp[Msg, Model]:
       }
       (model, cmd)
     case Msg.UseJWT(token) =>
-      (model.copy(authorizationJWT = Some(token)), Cmd.emit(Msg.JumpToHome))
+      (
+        model.copy(authorizationJWT = Some(token)),
+        Cmd.Batch(Cmd.emit(Msg.JumpToHome), Cmd.emit(Msg.GetAvailableModels))
+      )
     case Msg.ConsumeOauthCode(pathWithCode) =>
       val code = pathWithCode.replace("/callback?code=", "")
       val io: IO[Msg] =
@@ -170,6 +176,23 @@ object Client extends TyrianApp[Msg, Model]:
 
     case Msg.SetResults(res) =>
       (model.copy(classificationOutput = res), Cmd.None)
+    case Msg.GetAvailableModels =>
+      // val m = new ModelInfo("1", 1)
+      val io = model.authorizationJWT.fold(Msg.NoOp.pure[IO]) { token =>
+        val h = Headers(Header("Authorization", s"Bearer ${token}"))
+        val r = Request[IO](
+          Method.GET,
+          uri = Uri.fromString(f"http://localhost:8080/infer/model_info").right.get,
+          headers = h
+        )
+        client
+          .expect[String](r)
+          .map(s => Msg.ConsoleLog(s))
+          .handleError(_ => Msg.ConsoleLog(f"failed get available models"))
+      }
+      (model, Cmd.Run(io))
+    case Msg.setAvailableModels(models) =>
+      (model.copy(models = models), Cmd.None)
 
   def githubPage(callback: String) =
     s"https://github.com/login/oauth/authorize?scope=user:email&client_id=1a9ebd723f6ce63aef11&redirect_uri=$callback"
@@ -212,6 +235,8 @@ object Client extends TyrianApp[Msg, Model]:
             method  := "post",
             enctype := "multipart/form-data"
           )(
+            label("Select a model for inference"),
+            select(style(CSS.`margin-bottom`("1em")))(model.models.map(m => Html.option(m))),
             input(
               id     := "image-upload",
               name   := "image",
@@ -233,7 +258,8 @@ case class Model(
     image: Option[String],
     callbackUri: String,
     serverUri: String,
-    classificationOutput: Option[ClassificationOutput]
+    classificationOutput: Option[ClassificationOutput],
+    models: List[String]
 )
 
 enum Msg:
@@ -246,7 +272,9 @@ enum Msg:
   case ConsumeOauthCode(pathWithCode: String)
   case LoadImage
   case UseImage(image: String)
-  case SetResults(res: Option[ClassificationOutput])
   case UploadImage
+  case SetResults(res: Option[ClassificationOutput])
+  case GetAvailableModels
+  case setAvailableModels(models: List[String])
   case NoOp
   case GetEnvVars

@@ -44,26 +44,31 @@ Compile the project with the following command:
 ```bash
 sbt compile
 ```
+If there are no error messages then installation was successful
 
-touch vite.config.js
-touch index.html
-touch main.js
-touch package.json
+### Easy Docker Deployment
+The easiest way to deploy the system locally is with Docker/Docker Compose.
 
+Before you do that though you will need to configure the `docker-compose.yaml` file, by adding your client key and client secret. These are managed through github (or whatever OAuth provider you implement) and are necessary for login. 
+
+Below is a snippet of the yaml file which shows the areas that need to be configured.
+```yaml
+services:
+  ...
+  server:
+    image: mattlangsenkamp/scalamachinelearningdeployment:latest
+    ports:
+      - "8080:8080"
+    depends_on:
+      - grpctriton
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - TRITON_HOST=grpctriton
+      - KEY=<add GITHUB_CLIENT_KEY here>
+      - SECRET=<add GITHUB_CLIENT_SECRET>
+      - LABELS_DIR=/labels.json
+  ...
 ```
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.13.2")
-addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject"      % "1.2.0")
-addSbtPlugin("org.typelevel" % "sbt-typelevel" % "0.4.21")
-```
 
-mkdir -p front/shared/src/main/scala/com/mattlangsenkamp/client
-touch front/shared/src/main/scala/com/mattlangsenkamp/client/Client.scala
-
-mkdir -p server/jvm/
-mv src/ server/jvm/
-
-mv protobuf/src/ protobuf/jvm/
-
-nvm install node 20
-nvm use node 20
-npm install
+Once `docker-compose.yaml` has been configured simply run 
+`docker compose up` and navigate to `localhost:5713`

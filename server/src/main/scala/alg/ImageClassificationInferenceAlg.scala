@@ -32,8 +32,12 @@ import scala.util.Try
 import inference.grpc_service.ModelConfigResponse
 import inference.grpc_service.ServerLiveRequest
 import inference.grpc_service.ServerLiveResponse
+import inference.grpc_service.RepositoryIndexRequest
+import cats.Parallel
 
 trait ImageClassificationInferenceAlg[F[_], INPUT, OUTPUT]:
+
+  def getModelInfos: F[List[ModelInfo]]
 
   def modelExist(model: String, version: String): F[Boolean]
 
@@ -49,16 +53,29 @@ trait ImageClassificationInferenceAlg[F[_], INPUT, OUTPUT]:
 
 object ImageClassificationInferenceAlg:
 
-  def makeTriton[F[_]: Sync: Logger](
+  def makeTriton[F[_]: Parallel: Sync: Logger](
       labelMap: LabelMap,
       grpcStub: GRPCInferenceServiceFs2Grpc[F, Metadata],
-      modelCacheR: Ref[F, Set[(String, String)]]
+      modelCacheR: Ref[F, Map[(String, String), ModelInfo]]
   ): ImageClassificationInferenceAlg[F, TritonBatch, ModelInferResponse] =
     new ImageClassificationInferenceAlg:
 
+      def getModelInfos: F[List[ModelInfo]] =
+        for
+          models <- grpcStub.repositoryIndex(RepositoryIndexRequest(), Metadata())
+          modelConfigRequests = models.models.map(model =>
+            grpcStub.modelConfig(ModelConfigRequest(model.name, "1"), Metadata())
+          )
+          configs <- modelConfigRequests.parSequence
+        yield configs
+          .flatMap(conf =>
+            conf.config.map(value => ModelInfo(value.name, value.input.head.dims.head.toInt))
+          )
+          .toList
+
       def modelExist(model: String, version: String): F[Boolean] =
         for
-          modelExistLocal <- modelCacheR.get.map(_(model, version))
+          modelExistLocal <- modelCacheR.get.map(_.contains((model, version)))
           modelExists <-
             if modelExistLocal then modelExistLocal.pure[F]
             else
@@ -68,16 +85,25 @@ object ImageClassificationInferenceAlg:
                       new ModelConfigRequest(model, version),
                       new Metadata()
                     )
-                    .map(modelConfig => !modelConfig.config.isEmpty)
+                    .flatTap(modelConfig =>
+                      modelConfig.config
+                        .map(conf =>
+                          modelCacheR.update(
+                            _ + ((model, version) -> ModelInfo(
+                              conf.name,
+                              conf.input.head.dims.head.toInt
+                            ))
+                          )
+                        )
+                        .sequence
+                    )
+                    .map(modelConfig => modelConfig.config.isDefined)
                     .handleErrorWith(e =>
                       error"${e.getStackTrace().map(_.toString()).mkString("\n")}" *>
                         warn"Could not find model $model with version $version" *>
                         false.pure[F]
                     )
               yield modelExistTriton
-          _ <- // add the model to the local cache if we couldn't find it originally
-            if modelExists & !modelExistLocal then modelCacheR.update(_ + ((model, version)))
-            else Sync[F].unit
         yield modelExists
 
       def upload(part: Part[F]): F[ImageUpload] =

@@ -10,6 +10,7 @@ val osLibVersion     = "0.9.2"
 val http4sVersion    = "0.23.24"
 val http4sDomVersion = "0.2.11"
 val http4sJwtVersion = "1.2.1"
+val gatlingVersion   = "3.10.3"
 
 ThisBuild / scalaVersion := scala3Version
 
@@ -57,6 +58,7 @@ lazy val server = project
   .settings(
     name    := "scalamachinelearningdeployment",
     version := "0.0.1",
+
     // 3 add dependencies
     libraryDependencies ++= Seq(
       "org.bytedeco"   % "javacv-platform" % openCVVersion,
@@ -97,3 +99,13 @@ lazy val server = project
   )
   .enablePlugins(sbtdocker.DockerPlugin, JavaAppPackaging)
   .dependsOn(protobuf, core) // explicitly depend on protobuf module
+
+lazy val gatling = project
+  .in(file("gatling"))
+  .settings(
+    version := "0.0.1",
+    // GatlingIt / scalaSource := baseDirectory.value / ""
+    libraryDependencies += "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingVersion % "test,it",
+    libraryDependencies += "io.gatling" % "gatling-test-framework" % gatlingVersion % "test,it"
+  )
+  .enablePlugins(GatlingPlugin)
