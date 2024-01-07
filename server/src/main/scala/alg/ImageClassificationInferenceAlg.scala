@@ -67,6 +67,7 @@ object ImageClassificationInferenceAlg:
             grpcStub.modelConfig(ModelConfigRequest(model.name, "1"), Metadata())
           )
           configs <- modelConfigRequests.parSequence
+        // add models to the local cache
         yield configs
           .flatMap(conf =>
             conf.config.map(value => ModelInfo(value.name, value.input.head.dims.head.toInt))
@@ -142,9 +143,12 @@ object ImageClassificationInferenceAlg:
           val it = InferInputTensor("images", "FP32", Seq(batchSize, 3, 224, 224), contents = Some(ic))
           ModelInferRequest(model, "1", inputs = Seq(it))
         grpcStub
-          .modelInfer(makeModelInferRequest(preprocessed._2, batchSize, model), new Metadata())
+          .modelInfer(
+            makeModelInferRequest(preprocessed._2, batchSize, model),
+            new Metadata()
+          )
           .recoverWith { case e: Exception =>
-            info"hi" *> ModelInferResponse().pure[F]
+            warn"$e" *> ModelInferResponse().pure[F]
           }
           .map((preprocessed._1, _))
 

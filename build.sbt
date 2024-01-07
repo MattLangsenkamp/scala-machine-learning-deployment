@@ -19,7 +19,7 @@ lazy val protobuf = project
   .in(file("protobuf"))
   .enablePlugins(Fs2Grpc) // explicitly depend on gRPC plugin
 
-lazy val core = project
+lazy val core = crossProject(JSPlatform, JVMPlatform)
   .in(file("core"))
   .settings(
     libraryDependencies ++= Seq(
@@ -51,7 +51,7 @@ lazy val client = project
       "io.circe" %%% "circe-parser"
     ).map(_ % circeVersion)
   )
-  .dependsOn(core)
+  .dependsOn(core.js)
 
 lazy val server = project
   .in(file("server"))
@@ -98,7 +98,7 @@ lazy val server = project
     docker / imageNames := Seq(ImageName("mattlangsenkamp/scalamachinelearningdeployment-mid:latest"))
   )
   .enablePlugins(sbtdocker.DockerPlugin, JavaAppPackaging)
-  .dependsOn(protobuf, core) // explicitly depend on protobuf module
+  .dependsOn(protobuf, core.jvm) // explicitly depend on protobuf module
 
 lazy val gatling = project
   .in(file("gatling"))

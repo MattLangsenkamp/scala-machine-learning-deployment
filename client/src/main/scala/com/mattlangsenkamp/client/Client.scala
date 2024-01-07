@@ -40,8 +40,7 @@ import io.circe.syntax.*
 import io.circe.parser.*
 import io.circe.*
 import scala.concurrent.Future
-import com.mattlangsenkamp.core.ImageClassification.ClassificationOutput
-import com.mattlangsenkamp.core.ImageClassification.ModelInfo
+import com.mattlangsenkamp.core.ImageClassification.*
 import org.http4s.Header
 import org.http4s.Headers
 
@@ -62,29 +61,32 @@ object Client extends TyrianApp[Msg, Model]:
   type ClassificationOutput = Map[Filename, LabelProbabilities]
 
   def myFetch(
-      token: String
+      token: String,
+      model: Model
   ) =
-    val init = new RequestInit {}
-    val headers =
-      Map
-        .empty[String, org.scalajs.dom.ByteString]
-        .asInstanceOf[js.Dictionary[org.scalajs.dom.ByteString]]
-    headers("Authorization") = s"Bearer ${token}"
+    model.currentModel.fold(Cmd.emit(Msg.NoOp)) { curModel =>
+      val init = new RequestInit {}
+      val headers =
+        Map
+          .empty[String, org.scalajs.dom.ByteString]
+          .asInstanceOf[js.Dictionary[org.scalajs.dom.ByteString]]
+      headers("Authorization") = s"Bearer ${token}"
 
-    val body = FormData(document.querySelector("form").asInstanceOf[HTMLFormElement])
+      val body = FormData(document.querySelector("form").asInstanceOf[HTMLFormElement])
 
-    init.method = HttpMethod.POST
-    init.body = body
-    init.headers = headers
+      init.method = HttpMethod.POST
+      init.body = body
+      init.headers = headers
 
-    val co = for
-      jsPromise <- dom.fetch(
-        "http://localhost:8080/infer/infer?model=yolov8_1&top_k=10&batch_size=1",
-        init
-      )
-      text <- jsPromise.text()
-    yield Msg.SetResults(parse(text).toOption.flatMap(_.as[ClassificationOutput].toOption))
-    Cmd.Run(IO.fromFuture(IO(co)))
+      val co = for
+        jsPromise <- dom.fetch(
+          f"http://localhost:8080/infer/infer?model=${curModel.modelName}&top_k=10&batch_size=${curModel.batchSize}",
+          init
+        )
+        text <- jsPromise.text()
+      yield Msg.SetResults(parse(text).toOption.flatMap(_.as[ClassificationOutput].toOption))
+      Cmd.Run(IO.fromFuture(IO(co)))
+    }
 
   def router: Location => Msg =
     case loc: Location.Internal =>
@@ -106,7 +108,8 @@ object Client extends TyrianApp[Msg, Model]:
         "http://localhost:5173/callback",
         "http://localhost:8080",
         Option.empty,
-        List("hii")
+        List.empty,
+        Option.empty
       ),
       Cmd.Batch(Cmd.emit(Msg.LookForJWT), Cmd.emit(Msg.GetEnvVars))
     )
@@ -171,13 +174,12 @@ object Client extends TyrianApp[Msg, Model]:
       else (model, Cmd.None)
 
     case Msg.UploadImage =>
-      val cmd = model.authorizationJWT.fold(Cmd.None)(myFetch(_))
+      val cmd = model.authorizationJWT.fold(Cmd.None)(myFetch(_, model))
       (model, cmd)
 
     case Msg.SetResults(res) =>
       (model.copy(classificationOutput = res), Cmd.None)
     case Msg.GetAvailableModels =>
-      // val m = new ModelInfo("1", 1)
       val io = model.authorizationJWT.fold(Msg.NoOp.pure[IO]) { token =>
         val h = Headers(Header("Authorization", s"Bearer ${token}"))
         val r = Request[IO](
@@ -187,13 +189,15 @@ object Client extends TyrianApp[Msg, Model]:
         )
         client
           .expect[String](r)
-          .map(s => Msg.ConsoleLog(s))
+          .map(str => parse(str).toOption.flatMap(_.as[List[ModelInfo]].toOption).get)
+          .map(mis => Msg.SetAvailableModels(mis))
           .handleError(_ => Msg.ConsoleLog(f"failed get available models"))
       }
       (model, Cmd.Run(io))
-    case Msg.setAvailableModels(models) =>
-      (model.copy(models = models), Cmd.None)
-
+    case Msg.SetAvailableModels(models) =>
+      (model.copy(models = models), Cmd.Emit(Msg.SetCurrentModel(models.head)))
+    case Msg.SetCurrentModel(curModel) =>
+      (model.copy(currentModel = Some(curModel)), Cmd.None)
   def githubPage(callback: String) =
     s"https://github.com/login/oauth/authorize?scope=user:email&client_id=1a9ebd723f6ce63aef11&redirect_uri=$callback"
 
@@ -224,6 +228,9 @@ object Client extends TyrianApp[Msg, Model]:
       })
     }
 
+    def getModelInfo(m: String, model: Model): ModelInfo =
+      model.models.find(_.modelName == m).get
+
     div(wrapperStyle)(
       if model.authorizationJWT.isEmpty then
         button(bStyle, onClick(Msg.NavigateToUrl(githubPage(model.callbackUri))))("click me!")
@@ -236,7 +243,12 @@ object Client extends TyrianApp[Msg, Model]:
             enctype := "multipart/form-data"
           )(
             label("Select a model for inference"),
-            select(style(CSS.`margin-bottom`("1em")))(model.models.map(m => Html.option(m))),
+            select(
+              style(CSS.`margin-bottom`("1em")),
+              onChange(m => Msg.SetCurrentModel(getModelInfo(m, model)))
+            )(
+              model.models.map(m => Html.option(m.modelName))
+            ),
             input(
               id     := "image-upload",
               name   := "image",
@@ -259,7 +271,8 @@ case class Model(
     callbackUri: String,
     serverUri: String,
     classificationOutput: Option[ClassificationOutput],
-    models: List[String]
+    models: List[ModelInfo],
+    currentModel: Option[ModelInfo]
 )
 
 enum Msg:
@@ -275,6 +288,7 @@ enum Msg:
   case UploadImage
   case SetResults(res: Option[ClassificationOutput])
   case GetAvailableModels
-  case setAvailableModels(models: List[String])
+  case SetAvailableModels(models: List[ModelInfo])
+  case SetCurrentModel(model: ModelInfo)
   case NoOp
   case GetEnvVars

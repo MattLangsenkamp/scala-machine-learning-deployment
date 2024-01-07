@@ -66,7 +66,7 @@ final case class InferenceRoutes[F[_]: MonadThrow: Concurrent: Monad: Async](
               .evalMap(imgCls.upload)
               .through(imgCls.preProcessPipe(batchSize))
               .evalMap(v => imgCls.infer(v, batchSize, model))
-              .evalMap(v => imgCls.postProcess(v, batchSize, topK))
+              .evalMap(v => imgCls.postProcess(v, v._1.length, topK))
               .compile
               .toList
               .flatMap(l => Ok(l.reduce(_ |+| _).asJson))

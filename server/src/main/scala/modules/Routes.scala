@@ -53,8 +53,8 @@ sealed abstract class Routes[F[_]: Monad: MonadThrow: Concurrent: Async: Logger]
 
   private val loggers: HttpApp[F] => HttpApp[F] = { (http: HttpApp[F]) =>
     RequestLogger.httpApp(true, true)(http)
-  } andThen { (http: HttpApp[F]) =>
-    ResponseLogger.httpApp(true, true)(http)
-  }
+  } // andThen { (http: HttpApp[F]) =>
+  // ResponseLogger.httpApp(true, true)(http)
+  // }
 
-  val httpApp: HttpApp[F] = corsRoutes.orNotFound // loggers( )
+  val httpApp: HttpApp[F] = loggers(corsRoutes.orNotFound) // loggers()

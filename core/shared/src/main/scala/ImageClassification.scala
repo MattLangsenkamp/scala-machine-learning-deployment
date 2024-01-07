@@ -8,7 +8,6 @@ import cats.kernel.Monoid
 import cats.*
 import cats.syntax.*
 import cats.implicits.*
-import org.typelevel.jawn.AsyncParser.Mode
 
 object ImageClassification:
 
