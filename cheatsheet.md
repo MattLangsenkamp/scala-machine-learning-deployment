@@ -1,6 +1,9 @@
 ### run just triton
 docker run --gpus all -p 8000:8000 -p 8001:8001 -p 8002:8002 mattlangsenkamp/tritondeployment:latest
 
+### run just triton CPU
+docker run -p 8000:8000 -p 8001:8001 -p 8002:8002 mattlangsenkamp/tritondeployment:cpu
+
 ### run just the server
 docker run -p 8080:8080 -e KEY=foo -e SECRET=bar -e LABELS_DIR=/labels.json -e TRITON_HOST=127.0.0.1 -e SERVER_HOST=0.0.0.0 mattlangsenkamp/scalamachinelearningdeployment
 

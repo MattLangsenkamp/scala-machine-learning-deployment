@@ -13,16 +13,18 @@ import io.grpc.Metadata
 import cats.effect.kernel.{Sync, Ref}
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.syntax._
+import cats.Parallel
+import com.mattlangsenkamp.core.ImageClassification.ModelInfo
 
 object Algebras:
 
-  def make[F[_]: Applicative: ApplicativeThrow: Async: Logger](
+  def make[F[_]: Parallel: Applicative: ApplicativeThrow: Async: Logger](
       config: Config,
       labelMap: LabelMap,
       httpClient: Client[F],
       grpcStub: GRPCInferenceServiceFs2Grpc[F, Metadata],
       security: Security[F],
-      modelCacheR: Ref[F, Set[(String, String)]]
+      modelCacheR: Ref[F, Map[(String, String), ModelInfo]]
   ): Algebras[F] =
     new Algebras[F](
       githubAlg = GithubAlg.make[F](config.oAuthConfig, httpClient),

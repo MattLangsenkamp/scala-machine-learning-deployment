@@ -10,6 +10,7 @@ val osLibVersion     = "0.9.2"
 val http4sVersion    = "0.23.24"
 val http4sDomVersion = "0.2.11"
 val http4sJwtVersion = "1.2.1"
+val gatlingVersion   = "3.10.3"
 
 ThisBuild / scalaVersion := scala3Version
 
@@ -18,7 +19,7 @@ lazy val protobuf = project
   .in(file("protobuf"))
   .enablePlugins(Fs2Grpc) // explicitly depend on gRPC plugin
 
-lazy val core = project
+lazy val core = crossProject(JSPlatform, JVMPlatform)
   .in(file("core"))
   .settings(
     libraryDependencies ++= Seq(
@@ -50,13 +51,14 @@ lazy val client = project
       "io.circe" %%% "circe-parser"
     ).map(_ % circeVersion)
   )
-  .dependsOn(core)
+  .dependsOn(core.js)
 
 lazy val server = project
   .in(file("server"))
   .settings(
     name    := "scalamachinelearningdeployment",
     version := "0.0.1",
+
     // 3 add dependencies
     libraryDependencies ++= Seq(
       "org.bytedeco"   % "javacv-platform" % openCVVersion,
@@ -96,4 +98,14 @@ lazy val server = project
     docker / imageNames := Seq(ImageName("mattlangsenkamp/scalamachinelearningdeployment-mid:latest"))
   )
   .enablePlugins(sbtdocker.DockerPlugin, JavaAppPackaging)
-  .dependsOn(protobuf, core) // explicitly depend on protobuf module
+  .dependsOn(protobuf, core.jvm) // explicitly depend on protobuf module
+
+lazy val gatling = project
+  .in(file("gatling"))
+  .settings(
+    version := "0.0.1",
+    // GatlingIt / scalaSource := baseDirectory.value / ""
+    libraryDependencies += "io.gatling.highcharts" % "gatling-charts-highcharts" % gatlingVersion % "test,it",
+    libraryDependencies += "io.gatling" % "gatling-test-framework" % gatlingVersion % "test,it"
+  )
+  .enablePlugins(GatlingPlugin)

@@ -27,7 +27,8 @@ import org.http4s.circe.*
 import alg.ImageClassificationInferenceAlg
 
 import com.mattlangsenkamp.core.OAuth.GenericUser
-import com.mattlangsenkamp.core.ImageClassification.*
+import com.mattlangsenkamp.core.ImageClassification.{given, *}
+import com.mattlangsenkamp.server.domain.ImageClassification.given
 
 import inference.grpc_service.{
   GRPCInferenceServiceFs2Grpc,
@@ -50,7 +51,7 @@ final case class InferenceRoutes[F[_]: MonadThrow: Concurrent: Monad: Async](
 
   val authedRoutes: AuthedRoutes[GenericUser, F] = AuthedRoutes.of {
 
-    case GET -> Root / "hi" as user => Ok(user.email)
+    case GET -> Root / "model_info" as user => imgCls.getModelInfos.flatMap(p => Ok(p.asJson))
 
     case req @ POST -> Root / "infer"
         :? ModelQueryParamMatcher(model)
@@ -65,7 +66,7 @@ final case class InferenceRoutes[F[_]: MonadThrow: Concurrent: Monad: Async](
               .evalMap(imgCls.upload)
               .through(imgCls.preProcessPipe(batchSize))
               .evalMap(v => imgCls.infer(v, batchSize, model))
-              .evalMap(v => imgCls.postProcess(v, batchSize, topK))
+              .evalMap(v => imgCls.postProcess(v, v._1.length, topK))
               .compile
               .toList
               .flatMap(l => Ok(l.reduce(_ |+| _).asJson))

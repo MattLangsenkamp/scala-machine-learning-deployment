@@ -7,7 +7,6 @@ import io.circe.generic.semiauto.*
 import cats.effect.Concurrent
 import org.http4s.*
 import org.http4s.circe.*
-import org.http4s.EntityDecoder
 import com.mattlangsenkamp.core.OAuth.*
 
 object OAuth:

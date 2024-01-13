@@ -48,10 +48,10 @@ object Server extends IOApp.Simple:
 
   def run: IO[Unit] =
     val liveServer = for
-      config <- Config.conf.load[IO].toResource
-      labelMap = loadLabelMap(config.serverConfig.labelsDir)
-      clients  = Clients.make[IO](config)
-      modelCacheR <- Ref[IO].of(Set[(String, String)]()).toResource
+      config   <- Config.conf.load[IO].toResource
+      labelMap <- IO.blocking(loadLabelMap(config.serverConfig.labelsDir)).toResource
+      clients = Clients.make[IO](config)
+      modelCacheR <- Ref[IO].of(Map[(String, String), ModelInfo]()).toResource
       httpClient  <- clients.httpClient
       grpcStub    <- clients.grpcStub
       security = Security.make[IO](config, httpClient)
