@@ -80,7 +80,7 @@ object Client extends TyrianApp[Msg, Model]:
 
       val co = for
         jsPromise <- dom.fetch(
-          f"http://localhost:8080/infer/infer?model=${curModel.modelName}&top_k=10&batch_size=${curModel.batchSize}",
+          f"${model.serverUri}/infer/infer?model=${curModel.modelName}&top_k=10&batch_size=${curModel.batchSize}",
           init
         )
         text <- jsPromise.text()
@@ -161,6 +161,8 @@ object Client extends TyrianApp[Msg, Model]:
     case Msg.UseImage(image) =>
       (model.copy(image = Some(image)), Cmd.None)
     case Msg.GetEnvVars =>
+      // if it is in dev mode then use the defaults from init,
+      // if it is from docker local, then use env file, else use mldemo uri
       if meta.env.MODE.toString == "production" then
         val vcb = meta.env.VITE_CALLBACK.toString
         val cb =
@@ -184,7 +186,7 @@ object Client extends TyrianApp[Msg, Model]:
         val h = Headers(Header("Authorization", s"Bearer ${token}"))
         val r = Request[IO](
           Method.GET,
-          uri = Uri.fromString(f"http://localhost:8080/infer/model_info").right.get,
+          uri = Uri.fromString(f"${model.serverUri}/infer/model_info").right.get,
           headers = h
         )
         client

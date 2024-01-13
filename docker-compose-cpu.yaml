@@ -18,15 +18,8 @@ services:
       - SECRET=${GITHUB_CLIENT_SECRET}
       - LABELS_DIR=/labels.json
   grpctriton:
-    image: mattlangsenkamp/tritondeployment:latest
+    image: mattlangsenkamp/tritondeployment:cpu
     ports:
       - "8000:8000"
       - "8001:8001"
       - "8002:8002"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [ gpu ]
