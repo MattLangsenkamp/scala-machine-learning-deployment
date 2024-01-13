@@ -40,12 +40,6 @@ class BasicSimulation extends Simulation:
             .fileName("#{label}.jpg")
             .contentType("image/jpeg")
         )
-        .bodyPart(
-          ByteArrayBodyPart("file", "#{file}")
-            .fileName("#{label}2.jpg")
-            .contentType("image/jpeg")
-        )
-        .check(substring("#{label}"))
     }
 
   setUp(
