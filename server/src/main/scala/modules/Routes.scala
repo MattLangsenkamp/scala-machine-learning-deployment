@@ -21,15 +21,18 @@ import org.http4s.server.middleware.RequestLogger
 import org.http4s.server.middleware.ResponseLogger
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.syntax.*
+import routes.OtelTraceMiddleware
+import org.typelevel.otel4s.trace.Tracer
+import org.typelevel.otel4s.metrics.Meter
 
 object Routes:
 
-  def make[F[_]: Monad: MonadThrow: Concurrent: Async: Logger](
+  def make[F[_]: Monad: MonadThrow: Concurrent: Async: Logger: Tracer: Meter](
       algebras: Algebras[F],
       security: Security[F]
   ): Routes[F] = new Routes(algebras, security) {}
 
-sealed abstract class Routes[F[_]: Monad: MonadThrow: Concurrent: Async: Logger] private (
+sealed abstract class Routes[F[_]: Monad: MonadThrow: Concurrent: Async: Logger: Tracer: Meter] private (
     algebras: Algebras[F],
     security: Security[F]
 ):
@@ -57,4 +60,4 @@ sealed abstract class Routes[F[_]: Monad: MonadThrow: Concurrent: Async: Logger]
     ResponseLogger.httpApp(true, false)(http)
   }
 
-  val httpApp: HttpApp[F] = loggers(corsRoutes.orNotFound) // loggers()
+  val httpApp: HttpApp[F] = OtelTraceMiddleware(loggers(corsRoutes.orNotFound)) // loggers()

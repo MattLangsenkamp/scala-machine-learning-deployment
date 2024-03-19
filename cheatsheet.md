@@ -18,3 +18,6 @@ docker exec -it scalamachinelearningdeployment-server-1 bash
 
 docker compose -f docker-compose.yaml down
 
+### yea
+docker compose -f docker-compose-cpu.yaml up  grpctriton clie
+nt otel-collector jaeger prometheus
