@@ -23,13 +23,14 @@ import org.http4s.client.Client
 import pdi.jwt.JwtAlgorithm
 import dev.profunktor.auth.jwt.JwtAuth
 import dev.profunktor.auth.jwt.JwtSymmetricAuth
-import modules.Clients
-import modules.Algebras
-import modules.Security
-import modules.Routes
+import modules.*
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import os.{GlobSyntax, /, read, pwd}
 import com.mattlangsenkamp.core.ImageClassification.*
+import org.typelevel.otel4s.context.syntax.toContextSyntax
+import org.typelevel.otel4s.trace.Tracer
+import org.typelevel.otel4s.metrics.Meter
+
 object Server extends IOApp.Simple:
 
   def loadLabelMap(path: String): LabelMap =
@@ -48,15 +49,19 @@ object Server extends IOApp.Simple:
 
   def run: IO[Unit] =
     val liveServer = for
-      config   <- Config.conf.load[IO].toResource
-      labelMap <- IO.blocking(loadLabelMap(config.serverConfig.labelsDir)).toResource
-      clients = Clients.make[IO](config)
+      config      <- Config.conf.load[IO].toResource
+      labelMap    <- IO.blocking(loadLabelMap(config.serverConfig.labelsDir)).toResource
       modelCacheR <- Ref[IO].of(Map[(String, String), ModelInfo]()).toResource
+      clients = Clients.make[IO](config)
       httpClient  <- clients.httpClient
       grpcStub    <- clients.grpcStub
-      security = Security.make[IO](config, httpClient)
-      algebras = Algebras.make(config, labelMap, httpClient, grpcStub, security, modelCacheR)
-      routes   = Routes.make[IO](algebras, security)
+      otel        <- OpenTelemetry.make[IO]
+      instruments <- otel.instruments
+      given Tracer[IO] = instruments._1
+      given Meter[IO]  = instruments._2
+      security         = Security.make[IO](config, httpClient)
+      algebras <- Algebras.make(config, labelMap, httpClient, grpcStub, security, modelCacheR).toResource
+      routes = Routes.make[IO](algebras, security)
       srv <- server(config.serverConfig, routes.httpApp)
     yield srv
 

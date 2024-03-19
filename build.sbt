@@ -1,16 +1,18 @@
 import org.scalajs.linker.interface.ModuleSplitStyle
 
 // 1 create dependency variables
-val scala3Version    = "3.3.1"
-val fs2Version       = "3.9.3"
-val openCVVersion    = "1.5.9"
-val circeVersion     = "0.15.0-M1"
-val cirisVersion     = "3.5.0"
-val osLibVersion     = "0.9.2"
-val http4sVersion    = "0.23.24"
-val http4sDomVersion = "0.2.11"
-val http4sJwtVersion = "1.2.1"
-val gatlingVersion   = "3.10.3"
+val scala3Version        = "3.3.1"
+val fs2Version           = "3.9.3"
+val openCVVersion        = "1.5.9"
+val circeVersion         = "0.15.0-M1"
+val cirisVersion         = "3.5.0"
+val osLibVersion         = "0.9.2"
+val http4sVersion        = "0.23.24"
+val http4sDomVersion     = "0.2.11"
+val http4sJwtVersion     = "1.2.1"
+val gatlingVersion       = "3.10.3"
+val otel4sVersion        = "0.4.0"
+val openTelemetryVersion = "1.34.0"
 
 ThisBuild / scalaVersion := scala3Version
 
@@ -82,11 +84,19 @@ lazy val server = project
       "org.http4s" %% "http4s-dsl",
       "org.http4s" %% "http4s-circe"
     ).map(_ % http4sVersion),
+    libraryDependencies ++= Seq(
+      "org.typelevel"   %% "otel4s-core"                               % otel4sVersion,
+      "org.typelevel"   %% "otel4s-java"                               % otel4sVersion,
+      "io.opentelemetry" % "opentelemetry-exporter-otlp"               % openTelemetryVersion % Runtime,
+      "io.opentelemetry" % "opentelemetry-sdk-extension-autoconfigure" % openTelemetryVersion % Runtime
+    ),
+    javaOptions += "-Dotel.java.global-autoconfigure.enabled=true",
+    javaOptions += "-Dotel.service.name=scala-machine-learning",
+    javaOptions += "-Dotel.exporter.otlp.endpoint=http://localhost:4317",
     fork := true,
     docker / dockerfile := {
       val appDir: File = stage.value
       val targetDir    = "/app"
-
       new Dockerfile {
         from("eclipse-temurin:21-jre")
         expose(8080)
